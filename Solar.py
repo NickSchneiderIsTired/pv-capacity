@@ -1,20 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Auswertung Wärmepumpe und Solaranlage
+# Auswertung Wärmepumpe und Solaranlage
 # Installation und Import der notwendigen Pakete im aktiven Environment
 
-# In[1]:
-
-
-import sys
 # !{sys.executable} -m pip install pandas
 # !{sys.executable} -m pip install scipy
 # !{sys.executable} -m pip install matplotlib
 import pandas as pd
 import numpy as np
-from datetime import datetime
-import scipy.interpolate
 from scipy.interpolate import RectBivariateSpline
 import matplotlib.pyplot as plt
 
