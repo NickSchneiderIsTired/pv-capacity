@@ -321,19 +321,12 @@ def Plots(Dataframe_in):
 
 
 def Process_Dataframe():
-    t = time.time()
     Dataframe_in = import_PV(PVGIS_File, Installierte_Leistung)
-    print("TIME:", time.time() - t)
     Dataframe_in = Hausverbrauch(Hausverbrauch_24h, Dataframe_in)
     Dataframe_in = Heizlast_berechnen(Dataframe_in)
-
     Dataframe_in = Nachtabsenkung_berechnen(Dataframe_in)
     Dataframe_in = Stromaufnahme_WP_berechnen(Dataframe_in)
-
-
     Dataframe_in = Speicherauswertung(Dataframe_in)
-
-
     Auswertung_Dataframe(Dataframe_in)
     Plots(Dataframe_in)
     return Dataframe_in
