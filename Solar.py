@@ -213,15 +213,21 @@ def Speicherauswertung(Dataframe_in):
     # Anfangszustand des Akkus
     aktueller_speicher = max_kapazitaet * (1 - DoD)  # Speicher leer zu Beginn
 
+    direktePVNutzung = []
+    netzEinspeisung = []
+    akkuNutzung = []
+    netzBezug = []
+    speicherZustand = []
     # Iteration durch den DataFrame
-    for index, row in Dataframe_in.iterrows():
-        pv = row["P"]
-        verbrauch = row["Verbrauch"]
+    for tuples in Dataframe_in.itertuples():
+        pv = tuples[4]
+        verbrauch = tuples[14]
         ueberschuss = pv - verbrauch  # Positiv = Überschuss, Negativ = Defizit
 
         if ueberschuss >= 0:  # PV-Erzeugung reicht aus
             # Direkte PV-Nutzung
-            Dataframe_in.at[index, "Direkte_PV_Nutzung"] = verbrauch
+            #Dataframe_in.at[index, "Direkte_PV_Nutzung"] = verbrauch
+            direktePVNutzung.append(verbrauch)
             # Berechnung der freien Kapazität im Akku
             freie_kapazitaet = max_kapazitaet - aktueller_speicher
 
@@ -235,22 +241,39 @@ def Speicherauswertung(Dataframe_in):
             aktueller_speicher = min(max_kapazitaet, aktueller_speicher + ladung_tatsaechlich)
 
             # Berechnung der NetzEinspeisung: Wenn der Akku voll ist, wird der überschüssige Strom ins Netz eingespeist
-            Dataframe_in.at[index, "NetzEinspeisung"] = max(0.0, ueberschuss - ladung_tatsaechlich)
+            #Dataframe_in.at[index, "NetzEinspeisung"] = max(0.0, ueberschuss - ladung_tatsaechlich)
+            netzEinspeisung.append(max(0.0, ueberschuss - ladung_tatsaechlich))
+
+            # Set default 0s
+            akkuNutzung.append(0.0)
+            netzBezug.append(0.0)
+
         else:  # PV-Erzeugung reicht nicht aus
             # Direkte PV-Nutzung (maximal PV-Erzeugung)
-            Dataframe_in.at[index, "Direkte_PV_Nutzung"] = pv
+            #Dataframe_in.at[index, "Direkte_PV_Nutzung"] = pv
+            direktePVNutzung.append(pv)
             bedarf = -ueberschuss  # Fehlender Verbrauch
             # Energie aus dem Akku entnehmen (bis zur minimalen Kapazität)
             maximal_entnahme = (aktueller_speicher - min_kapazitaet) * entladeverlust
             entnahme = min(maximal_entnahme, bedarf)
             aktueller_speicher -= entnahme / entladeverlust  # Verluste berücksichtigen
-            Dataframe_in.at[index, "Akkunutzung"] = entnahme
+            #Dataframe_in.at[index, "Akkunutzung"] = entnahme
+            akkuNutzung.append(entnahme)
             # Netzbezug für den restlichen Bedarf
-            Dataframe_in.at[index, "Netzbezug"] = max(0.0, bedarf - entnahme)
-            Dataframe_in.at[index, "NetzEinspeisung"] = 0.0  # Kein Überschuss zum Einspeisen
+            #Dataframe_in.at[index, "Netzbezug"] = max(0.0, bedarf - entnahme)
+            netzBezug.append(max(0.0, bedarf - entnahme))
+            #Dataframe_in.at[index, "NetzEinspeisung"] = 0.0  # Kein Überschuss zum Einspeisen
+            netzEinspeisung.append(0.0) # Kein Überschuss zum Einspeisen
 
         # Speicherzustand aktualisieren
-        Dataframe_in.at[index, "Speicherzustand"] = aktueller_speicher
+        # Dataframe_in.at[index, "Speicherzustand"] = aktueller_speicher
+        speicherZustand.append(aktueller_speicher)
+
+    Dataframe_in["Direkte_PV_Nutzung"] = direktePVNutzung
+    Dataframe_in["Akkunutzung"] = akkuNutzung
+    Dataframe_in["Netzbezug"] = netzBezug
+    Dataframe_in["NetzEinspeisung"] = netzEinspeisung
+    Dataframe_in["Speicherzustand"] = speicherZustand
     return Dataframe_in
 
 
@@ -258,9 +281,6 @@ def Speicherauswertung(Dataframe_in):
 
 
 def Auswertung_Dataframe(Dataframe_in):
-    df_Jahressummen = Dataframe_in.groupby('Year').agg(
-        {'P': 'sum', 'Verbrauch': 'sum', 'Netzbezug': 'sum', 'NetzEinspeisung': 'sum', 'Direkte_PV_Nutzung': 'sum',
-         'Akkunutzung': 'sum'}).round(0)
     # Jahresarbeitszahl-Auswertung
     df_Jahressummen = Dataframe_in.groupby('Year').agg(
         {'P': 'sum', 'T2m': 'mean', 'Heizleistung': 'sum', 'Warmwasserleistung': 'sum', 'Stromaufnahme_WP_Heiz': 'sum',
@@ -291,8 +311,8 @@ def Plots(Dataframe_in):
     df_Warmwasserkurve['Warmwasserleistung'] = Heizlast_Warmwasser
     plot = df_Heizkurve['Heizleistung'].plot()
     plot = df_Warmwasserkurve['Warmwasserleistung'].plot(title="Heiz- und Warmwasserleistung [kW]")
-    plot.set_xlim([-10, 25]);
-    df_COP.plot(title="COP für Panasonic 9kW WP WH-MXC09J3E5");
+    plot.set_xlim([-10, 25])
+    df_COP.plot(title="COP für Panasonic 9kW WP WH-MXC09J3E5")
     Dataframe_in = Dataframe_in[~((Dataframe_in['Month'] == 2) & (Dataframe_in['Day'] == 29))]  # 29.Feb. eliminieren
     Dataframe_in["datetime"] = 0
     Dataframe_in["datetime"] = pd.to_datetime(Dataframe_in[["Year", "Month", "Day", "Hour"]], format="%Y-%m-%d %H")
@@ -307,12 +327,13 @@ def Process_Dataframe():
     Dataframe_in = import_PV(PVGIS_File, Installierte_Leistung)
     Dataframe_in = Hausverbrauch(Hausverbrauch_24h, Dataframe_in)
     Dataframe_in = Heizlast_berechnen(Dataframe_in)
-    t = time.time()
+
     Dataframe_in = Nachtabsenkung_berechnen(Dataframe_in)
-    print("TIME:", time.time() - t)
     Dataframe_in = Stromaufnahme_WP_berechnen(Dataframe_in)
+    t = time.time()
 
     Dataframe_in = Speicherauswertung(Dataframe_in)
+    print("TIME:", time.time() - t)
 
 
     Auswertung_Dataframe(Dataframe_in)
