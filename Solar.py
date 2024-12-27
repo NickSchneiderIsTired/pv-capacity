@@ -95,13 +95,10 @@ f = RectBivariateSpline(x, y, np.transpose(z))
 def import_PV(CSV_Filename, installed_kWp):
     # Import hourly data PV from PVGIS for 1kWp and multiply with PV_Leistung
     Header = 8
-    df = pd.read_csv(CSV_Filename, sep=",", header=Header, low_memory=False)
+    df = pd.read_csv(CSV_Filename, usecols=["time", "P", "T2m", "Int"], sep=",", header=Header, low_memory=False)
     df = df.dropna(subset=["P"])
     df = df.dropna(subset=["Int"])
     df.index = pd.to_datetime(df['time'], format='%Y%m%d:%H%M')
-    df = df.drop('G(i)', axis=1)
-    df = df.drop('H_sun', axis=1)
-    df = df.drop('WS10m', axis=1)
     df = df.drop('Int', axis=1)
     df = df.drop('time', axis=1)
 
@@ -324,16 +321,17 @@ def Plots(Dataframe_in):
 
 
 def Process_Dataframe():
+    t = time.time()
     Dataframe_in = import_PV(PVGIS_File, Installierte_Leistung)
+    print("TIME:", time.time() - t)
     Dataframe_in = Hausverbrauch(Hausverbrauch_24h, Dataframe_in)
     Dataframe_in = Heizlast_berechnen(Dataframe_in)
 
     Dataframe_in = Nachtabsenkung_berechnen(Dataframe_in)
     Dataframe_in = Stromaufnahme_WP_berechnen(Dataframe_in)
-    t = time.time()
+
 
     Dataframe_in = Speicherauswertung(Dataframe_in)
-    print("TIME:", time.time() - t)
 
 
     Auswertung_Dataframe(Dataframe_in)
