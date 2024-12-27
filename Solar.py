@@ -9,6 +9,7 @@
 # !{sys.executable} -m pip install matplotlib
 import pandas as pd
 import numpy as np
+import time
 from scipy.interpolate import RectBivariateSpline
 import matplotlib.pyplot as plt
 
@@ -173,13 +174,20 @@ def Nachtabsenkung_berechnen(Dataframe_in):
 
 
 def Stromaufnahme_WP_berechnen(Dataframe_in):
+    heizList = []
+    wwList = []
+    T2mList = Dataframe_in['T2m'].to_list()
     for j in Dataframe_in.index:
-        Vorlauftemperatur_calc = (Vorlauftemperatur_Steigung * Dataframe_in.loc[j, 'T2m'] + Vorlauftemperatur_0deg)
-        COP_calc_Heiz = f(Dataframe_in.loc[j, 'T2m'], Vorlauftemperatur_calc)
-        COP_calc_Warmwasser = f(Dataframe_in.loc[j, 'T2m'], Warmwassertemperatur)
-        Dataframe_in.loc[j, 'COP_WP_Heiz'] = COP_calc_Heiz.item(0)
-        Dataframe_in.loc[j, 'COP_WP_Warmwasser'] = COP_calc_Warmwasser.item(0)
+        T2m = T2mList[j]
+        Vorlauftemperatur_calc = (Vorlauftemperatur_Steigung * T2m + Vorlauftemperatur_0deg)
+        COP_calc_Heiz = f(T2m, Vorlauftemperatur_calc)
+        COP_calc_Warmwasser = f(T2m, Warmwassertemperatur)
 
+        heizList.append(COP_calc_Heiz.item(0))
+        wwList.append(COP_calc_Warmwasser.item(0))
+
+    Dataframe_in['COP_WP_Heiz'] = heizList
+    Dataframe_in['COP_WP_Warmwasser'] = wwList
     Dataframe_in['Stromaufnahme_WP_Heiz'] = Dataframe_in['Heizleistung'] / Dataframe_in['COP_WP_Heiz']
     Dataframe_in['Stromaufnahme_WP_Warmwasser'] = Dataframe_in['Warmwasserleistung'] / Dataframe_in['COP_WP_Warmwasser']
     return Dataframe_in
@@ -299,8 +307,11 @@ def Process_Dataframe():
     Dataframe_in = Hausverbrauch(Hausverbrauch_24h, Dataframe_in)
     Dataframe_in = Heizlast_berechnen(Dataframe_in)
     Dataframe_in = Nachtabsenkung_berechnen(Dataframe_in)
+    t = time.time()
     Dataframe_in = Stromaufnahme_WP_berechnen(Dataframe_in)
+    print("TIME:", time.time() - t)
     Dataframe_in = Speicherauswertung(Dataframe_in)
+
     Auswertung_Dataframe(Dataframe_in)
     Plots(Dataframe_in)
     return Dataframe_in
