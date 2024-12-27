@@ -151,8 +151,9 @@ def Nachtabsenkung_berechnen(Dataframe_in):
     if Nachtabsenkung_aktiv:
         heizleistungList = Dataframe_in['Heizleistung'].to_list()
         warmwasserleistungList = Dataframe_in['Warmwasserleistung'].to_list()
+        hours = Dataframe_in["Hour"].to_list()
         for j in Dataframe_in.index:
-            if Dataframe_in.loc[j, 'Hour'] == 0:  # Beginn neuer Tag
+            if hours[j] == 0:  # Beginn neuer Tag
                 Energieaufschub = 0
                 Energieaufschub_WW = 0
                 for i in [0, 1, 2, 3, 4, 5, 22, 23]:
@@ -306,11 +307,13 @@ def Process_Dataframe():
     Dataframe_in = import_PV(PVGIS_File, Installierte_Leistung)
     Dataframe_in = Hausverbrauch(Hausverbrauch_24h, Dataframe_in)
     Dataframe_in = Heizlast_berechnen(Dataframe_in)
-    Dataframe_in = Nachtabsenkung_berechnen(Dataframe_in)
     t = time.time()
-    Dataframe_in = Stromaufnahme_WP_berechnen(Dataframe_in)
+    Dataframe_in = Nachtabsenkung_berechnen(Dataframe_in)
     print("TIME:", time.time() - t)
+    Dataframe_in = Stromaufnahme_WP_berechnen(Dataframe_in)
+
     Dataframe_in = Speicherauswertung(Dataframe_in)
+
 
     Auswertung_Dataframe(Dataframe_in)
     Plots(Dataframe_in)
